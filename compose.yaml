@@ -21,6 +21,8 @@ services:
     security_opt:
       - no-new-privileges:true
     <<: [*restart-always]
+    ports:
+      - "8081:80"
     volumes:
       - .:/app
     labels:
@@ -78,6 +80,22 @@ services:
     depends_on:
       - phpfpm
 
+  meilisearch:
+    image: getmeili/meilisearch:${MEILISEARCH_IMAGE_VERSION:-v1.12}
+    <<: [ *restart-always ]
+    environment:
+      MEILI_MASTER_KEY: ${MEILISEARCH_MASTER_KEY}
+      MEILI_LOG_LEVEL: ${MEILISEARCH_LOG_LEVEL:-'ERROR'}
+      MEILI_NO_ANALYTICS: true
+    logging:
+      options:
+        max-size: "25mb"
+        max-file: "5"
+    volumes:
+      - meili_data:/meili_data
+    networks:
+      - webapp
+
   wait:
     image: waisbrot/wait
     environment:
@@ -92,6 +110,8 @@ volumes:
   mysql_log:
     driver: local
   apache_log:
+    driver: local
+  meili_data:
     driver: local
 
 networks:

@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      target: local
+      target: curl-impersonate
       args:
         UID: ${UID:-10000}
         GID: ${GID:-10001}
