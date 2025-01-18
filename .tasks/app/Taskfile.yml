@@ -1,0 +1,77 @@
+version: '3'
+
+tasks:
+  shell:
+    desc: Container shell
+    cmds:
+      - docker compose exec $TTY phpfpm {{.CLI_ARGS | default "/bin/bash"}}
+
+  console:
+    desc: Symfony bin/console
+    cmds:
+      - docker compose exec $TTY phpfpm bin/console {{.CLI_ARGS}}
+
+  install:dev:
+    desc: Install packages, assets and NPM dependencies
+    cmds:
+      - task composer:install:dev
+      - task app:cache:clear
+      - task app:install:assets
+
+  install:prod:
+    desc: Install packages, assets and NPM dependencies
+    cmds:
+      - task composer:install:prod
+      - task app:cache:clear
+      - task app:install:assets
+
+  install:assets:
+    desc: Install assets
+    cmds:
+      - docker compose exec $TTY phpfpm bin/console assets:install --symlink public
+
+  asset:integrity:
+    desc: Generate integrity hash for file
+    vars:
+      FILE: '{{.f}}'
+    cmds:
+      - openssl dgst -sha384 -binary {{.FILE}} | openssl base64 -A
+
+  cache:clear:
+    desc: App cache clear
+    cmds:
+      - docker compose exec $TTY phpfpm bin/console cache:clear -v
+
+  reset:permissions:
+    desc: Reset app var permissions (in case of wrong file permissions)
+    vars:
+      PERMISSIONS: '{{.p | default 777}}'
+    cmds:
+      - |
+        sudo chmod -R {{.PERMISSIONS}} ./var
+        sudo chown -R $UID:$GID ./var
+
+  migration:create:
+    desc: Create new migration file in `./migrations`
+    cmds:
+      - docker compose exec $TTY phpfpm bin/console make:migration
+
+  migration:execute:
+    desc: Run specific migration up or down by migration FQCN
+    summary: |
+      Example: task app:migration:execute m="DoctrineMigrations\Version20221228235715" d="up"
+    vars:
+      MIGRATION: '{{.m}}'
+      DIRECTION: '{{.d}}'
+    cmds:
+      - docker compose exec $TTY phpfpm bin/console doctrine:migrations:execute "{{.MIGRATION}}" --{{.DIRECTION}}
+
+  migration:run:
+    desc: Run migrations
+    cmds:
+      - docker compose exec $TTY phpfpm bin/console doctrine:migrations:migrate -n -vv --allow-no-migration --query-time
+
+  logs:
+    desc: App show container logs
+    cmds:
+      - docker compose logs -ft phpfpm
